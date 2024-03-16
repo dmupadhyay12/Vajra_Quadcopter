@@ -1,0 +1,3 @@
+../Core/Src/kalman.c:3:6:kalman_initialize	40	static
+../Core/Src/kalman.c:22:6:kalman_predict	104	static
+../Core/Src/kalman.c:87:6:kalman_update	160	static

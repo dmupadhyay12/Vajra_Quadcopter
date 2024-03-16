@@ -1,0 +1,2 @@
+../Core/Src/pwm.c:8:6:pwm_init	16	static
+../Core/Src/pwm.c:12:6:pwm_update_percentage	24	static

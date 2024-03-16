@@ -1,0 +1,2 @@
+../Core/Src/rc_input.c:4:9:get_channel_percentage	24	static
+../Core/Src/rc_input.c:23:6:update_pulse_width	24	static
