@@ -387,27 +387,43 @@ int main(void)
     //   printf("Channel %d: %d\n", i, teleop_commands.channels[i]);
     // }
 
+    printf("Value: %d\n", teleop_commands.arm_switch_status);
+
     switch(current_state) {
       case UNCALIBRATED:
+        HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
         // Run calibration steps and advance state to DISARMED
         // vajra_calibrate();
         current_state = DISARMED;
         break;
       case DISARMED:
+        HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
+
         // When the quadcopter is disarmed, it can only advance to an armed state if both sticks
         // are in the bottom left of the box. 
         // This occurs when all four channels are less than 10% 
-        if ((yaw_input < 10.0) && (roll_input < 10.0) && (throttle_input < 10.0) && (pitch_input < 10.0)) {
+        printf("Hello!\n");
+        if (teleop_commands.arm_switch_status) {
+          
           current_state = ARMED;
-          // TODO: Set LEDs or some form of audio-visual feedback indicating that the quadcopter is armed
         } else {
           // Continue in disarmed state 
         }
         break;
       case ARMED:
+        HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
         // state estimation and control loop goes ahead - in each timer interrupt iteration you must 
         // create a 
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
+        if (teleop_commands.arm_switch_status) {
+          current_state = DISARMED;
+        }
         break;
     }
 
