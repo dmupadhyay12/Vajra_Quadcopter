@@ -31,6 +31,7 @@
 #include "actuator.h"
 #include "rc_input.h"
 #include "sbus.h"
+#include "imu.h"
 
 /* USER CODE END Includes */
 
@@ -80,34 +81,6 @@ actuator_config_t right_back_motor = {
 
 // input channels configuration
 
-// Throttle channel is Channel 1 - Pin PA6
-input_channel_t throttle_channel = {
-  .current_pulse_width = 0,
-  .max_pulse_width = 3200,
-  .min_pulse_width = 0,
-};
-
-// Roll channel is Channel 2 - Pin PC7
-input_channel_t roll_channel = {
-  .current_pulse_width = 0,
-  .max_pulse_width = 3200,
-  .min_pulse_width = 0,
-};
-
-// Yaw channel is Channel 3 - Pin PC8
-input_channel_t yaw_channel = {
-  .current_pulse_width = 0,
-  .max_pulse_width = 3200,
-  .min_pulse_width = 0,
-};
-
-// Pitch channel is Channel 4 - Pin PB1
-input_channel_t pitch_channel = {
-  .current_pulse_width = 0,
-  .max_pulse_width = 3200,
-  .min_pulse_width = 0,
-};
-
 channel_info_t teleop_commands = {
   .channels = {},
   .throttle = 0,
@@ -116,6 +89,31 @@ channel_info_t teleop_commands = {
   .yaw = 0,
   .frame_lost = false,
   .failsafe_activated = false,
+};
+
+// IMU Configuration
+MPU6050_t imu = {
+  .Accel_X_OFFSET = 0,
+  .Accel_Y_OFFSET = 0,
+  .Accel_Z_OFFSET = 0,
+  .Ax = 0,
+  .Ay = 0,
+  .Az = 0,
+  .Gyro_X_OFFSET = 0,
+  .Gyro_Y_OFFSET = 0,
+  .Gyro_Z_OFFSET = 0,
+  .Gx = 0,
+  .Gy = 0,
+  .Gz = 0,
+  .updatePeriod = 0,
+  .temperature = 0,
+  .accelRoll = 0,
+  .accelPitch = 0,
+  .gyroRoll = 0,
+  .gyroPitch = 0,
+  .alpha = 0,
+  .filteredRoll = 0,
+  .filteredPitch = 0,  
 };
 
 /* USER CODE END PD */
@@ -144,111 +142,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 // Defining intermediate buffer to be populated and parsed
 
 volatile uint8_t header_bytes[25] = {0};
-volatile bool conversion_pending = false;
-volatile first_byte_detected = false;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  first_byte_detected = true;
   if (huart -> Instance == USART3) {
     if (header_bytes[0] == HEADER_BYTE) {
       update_channels(&teleop_commands, header_bytes);
     }
-    // if (!conversion_pending) {
-    //   // check if the byte is the packet header
-    //   printf("Header: %x\n", header_bytes[0]);
-    //   if (header_bytes[0] == HEADER_BYTE) {
-    //     // printf("HEADER BYTE DETECTED!\n");
-    //     header_bytes[0] = 0; // reset first byte 
-    //     conversion_pending = 1;
-    //     HAL_UART_Receive_IT(&huart, header_bytes + 1, 20);
-    //   }
-    // } else {
-    //   // process the bytes and reset flag
-    //   printf("Read all 25 bytes!");
-    //   update_channels(&teleop_commands, header_bytes);
-    // } 
   }
-}
-
-volatile bool capture_detected = 0;
-volatile int channel_during_capture = 0;
-
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
-
-  static volatile bool rising_edge_captured_channel1 = false;
-  static volatile uint16_t rising_edge_value_channel1 = 0;
-  static volatile uint16_t falling_edge_value_channel1 = 0;
-
-  static volatile bool rising_edge_captured_channel2 = false;
-  static volatile uint16_t rising_edge_value_channel2 = 0;
-  static volatile uint16_t falling_edge_value_channel2 = 0;
-
-  static volatile bool rising_edge_captured_channel3 = false;
-  static volatile uint16_t rising_edge_value_channel3 = 0;
-  static volatile uint16_t falling_edge_value_channel3 = 0;
-
-  static volatile bool rising_edge_captured_channel4 = false;
-  static volatile uint16_t rising_edge_value_channel4 = 0;
-  static volatile uint16_t falling_edge_value_channel4 = 0;
-
-  channel_during_capture = htim -> Channel;
-  if (channel_during_capture == HAL_TIM_ACTIVE_CHANNEL_1) {
-    if (!rising_edge_captured_channel1) {
-      rising_edge_value_channel1 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
-      rising_edge_captured_channel1 = true;
-    } else {
-      capture_detected = true;
-      falling_edge_value_channel1 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
-
-      // update the actuator channel percentage value
-      update_pulse_width(&throttle_channel, rising_edge_value_channel1, falling_edge_value_channel1);
-      rising_edge_captured_channel1 = false;
-    }
-  } 
-  else if (channel_during_capture == HAL_TIM_ACTIVE_CHANNEL_2) {
-    if (!rising_edge_captured_channel2) {
-      rising_edge_value_channel2 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-      rising_edge_captured_channel2 = true;
-    } else {
-      // capture_detected = true;
-      falling_edge_value_channel2 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-
-      // update the actuator channel percentage value
-      update_pulse_width(&roll_channel, rising_edge_value_channel2, falling_edge_value_channel2);
-      rising_edge_captured_channel2 = false;
-    }
-  } 
-  else if (channel_during_capture == HAL_TIM_ACTIVE_CHANNEL_3) {
-    if (!rising_edge_captured_channel3) {
-      rising_edge_value_channel1 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_3);
-      rising_edge_captured_channel3 = true;
-    } else {
-      falling_edge_value_channel3 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_3);
-
-      // update the actuator channel percentage value
-      update_pulse_width(&yaw_channel, rising_edge_value_channel3, falling_edge_value_channel3);
-      rising_edge_captured_channel3 = false;
-    }
-  } 
-  else if (channel_during_capture == HAL_TIM_ACTIVE_CHANNEL_4) {
-    if (!rising_edge_captured_channel4) {
-      rising_edge_value_channel4 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_4);
-      rising_edge_captured_channel4 = true;
-    } else {
-      falling_edge_value_channel4 = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_4);
-
-      // update the actuator channel percentage value
-      update_pulse_width(&pitch_channel, rising_edge_value_channel4, falling_edge_value_channel4);
-      rising_edge_captured_channel4 = false;
-    }
-  } else {
-    // Channel irrelevant to operation of flight software
-  }
-}
-
-float get_input_percentage(input_channel_t* channel) {
-  return (float) (channel -> current_pulse_width - channel -> min_pulse_width) / (float)(channel -> max_pulse_width - channel -> min_pulse_width);
 }
 
 /* USER CODE END PFP */
@@ -308,14 +209,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_TIM_Base_Start_IT(&htim5);
 
-  // Start input capture interrupts
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_3);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_4);
-
   // Initialize UART RX Interrupts
-
   pwm_init(&left_front_motor);
   pwm_init(&right_front_motor);
   pwm_init(&left_back_motor);
@@ -377,11 +271,6 @@ int main(void)
     pwm_update_percentage(&left_back_motor, 75);
     pwm_update_percentage(&right_back_motor, 100);
 
-    float roll_input = get_channel_percentage(&roll_channel);
-    float yaw_input = get_channel_percentage(&yaw_channel);
-    float throttle_input = get_channel_percentage(&throttle_channel);
-    float pitch_input = get_channel_percentage(&pitch_channel);
-
     // Print all of the channel values:
     // for (int i = 0; i < 4; i++) {
     //   printf("Channel %d: %d\n", i, teleop_commands.channels[i]);
@@ -396,6 +285,9 @@ int main(void)
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
         // Run calibration steps and advance state to DISARMED
         // vajra_calibrate();
+
+        // Initialize IMU
+        MPU6050_Init(&hi2c1, &imu);
         current_state = DISARMED;
         break;
       case DISARMED:
@@ -421,7 +313,7 @@ int main(void)
         // state estimation and control loop goes ahead - in each timer interrupt iteration you must 
         // create a 
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
-        if (teleop_commands.arm_switch_status) {
+        if (!teleop_commands.arm_switch_status) {
           current_state = DISARMED;
         }
         break;
