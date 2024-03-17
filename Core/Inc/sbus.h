@@ -17,6 +17,10 @@
 
 typedef struct channel_info {
     uint16_t channels[18];
+    float throttle;
+    float roll;
+    float pitch;
+    float yaw;
     bool frame_lost;
     bool failsafe_activated;
 } channel_info_t;

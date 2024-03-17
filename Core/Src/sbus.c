@@ -3,8 +3,15 @@
 #include "stdbool.h"
 #include <stddef.h>
 
-// Helper function for mapping one range onto another
-
+// Helper function for mapping one range onto -100 to +100
+float map(uint16_t low_val, uint16_t high_val, uint16_t val_to_map) {
+    int range = (int) (high_val) - (int) (low_val);
+    float ratio = (int) (val_to_map) / range;
+    
+    float mapped_val = -100.0 + ratio * 200.0;
+    
+    return mapped_val;
+}
 
 void update_channels(channel_info_t* channel_info, uint8_t* buf) {
     // iterates through the 25-byte buffer received as per SBUS protocol
@@ -45,6 +52,9 @@ void update_channels(channel_info_t* channel_info, uint8_t* buf) {
 
         // For channels 0 through 3, map inputs from -100 to +100
 
-
+        channel_info -> throttle = map(CHANNEL_0_LOW, CHANNEL_0_HIGH, channel_info -> channels[0]);
+        channel_info -> roll = map(CHANNEL_1_LOW, CHANNEL_1_HIGH, channel_info -> channels[1]);
+        channel_info -> pitch = map(CHANNEL_2_LOW, CHANNEL_2_HIGH, channel_info -> channels[2]);
+        channel_info -> yaw = map(CHANNEL_3_LOW, CHANNEL_3_HIGH, channel_info -> channels[3]);
     }
 }

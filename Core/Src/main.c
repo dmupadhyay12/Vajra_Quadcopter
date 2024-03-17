@@ -110,6 +110,10 @@ input_channel_t pitch_channel = {
 
 channel_info_t teleop_commands = {
   .channels = {},
+  .throttle = 0,
+  .roll = 0,
+  .pitch = 0,
+  .yaw = 0,
   .frame_lost = false,
   .failsafe_activated = false,
 };
