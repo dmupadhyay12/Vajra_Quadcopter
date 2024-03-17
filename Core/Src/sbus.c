@@ -56,5 +56,11 @@ void update_channels(channel_info_t* channel_info, uint8_t* buf) {
         channel_info -> roll = map(CHANNEL_1_LOW, CHANNEL_1_HIGH, channel_info -> channels[1]);
         channel_info -> pitch = map(CHANNEL_2_LOW, CHANNEL_2_HIGH, channel_info -> channels[2]);
         channel_info -> yaw = map(CHANNEL_3_LOW, CHANNEL_3_HIGH, channel_info -> channels[3]);
+
+        if (channel_info -> channels[4] > CHANNEL_4_THRESHOLD) {
+            channel_info -> arm_switch_status = true;
+        } else {
+            channel_info -> arm_switch_status = false;
+        }
     }
 }

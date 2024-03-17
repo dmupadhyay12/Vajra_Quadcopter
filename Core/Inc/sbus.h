@@ -14,6 +14,7 @@
 #define CHANNEL_2_HIGH 1233
 #define CHANNEL_3_LOW 172
 #define CHANNEL_3_HIGH 1811
+#define CHANNEL_4_THRESHOLD 1800
 
 typedef struct channel_info {
     uint16_t channels[18];
@@ -21,6 +22,7 @@ typedef struct channel_info {
     float roll;
     float pitch;
     float yaw;
+    bool arm_switch_status;
     bool frame_lost;
     bool failsafe_activated;
 } channel_info_t;

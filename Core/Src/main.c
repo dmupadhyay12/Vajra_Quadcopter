@@ -152,7 +152,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   first_byte_detected = true;
   if (huart -> Instance == USART3) {
     if (header_bytes[0] == HEADER_BYTE) {
-      // printf("Interrupt detected\n");
       update_channels(&teleop_commands, header_bytes);
     }
     // if (!conversion_pending) {
@@ -387,8 +386,6 @@ int main(void)
     // for (int i = 0; i < 4; i++) {
     //   printf("Channel %d: %d\n", i, teleop_commands.channels[i]);
     // }
-
-    printf("Channel: %d\n", teleop_commands.channels[3]);
 
     switch(current_state) {
       case UNCALIBRATED:
