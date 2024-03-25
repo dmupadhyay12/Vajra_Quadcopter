@@ -26,10 +26,11 @@
 #include "usart.h"
 #include "gpio.h"
 
+#include "stdbool.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "actuator.h"
-#include "rc_input.h"
 #include "sbus.h"
 #include "imu.h"
 
@@ -132,9 +133,11 @@ MPU6050_t imu = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+volatile bool control_loop_deadline = false;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {  
-  // TODO: Implement system utime
+  if (htim == &htim3) {
+    control_loop_deadline = true;
+  }
 }
 
 
@@ -175,7 +178,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  UART_HandleTypeDef huart;
 
   /* USER CODE END Init */
 
@@ -202,7 +204,7 @@ int main(void)
 
   // Initialize timer interrupts
 
-  HAL_TIM_Base_Start(&htim3);
+  HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start(&htim4);
   HAL_TIM_Base_Start(&htim5);
   
@@ -233,6 +235,10 @@ int main(void)
   while (1)
   { 
 
+    while(1) {
+      MPU6050_Update_All(&hi2c1, &imu);
+      printf("IMU Data: %f\n", imu.Ax);
+    }
     HAL_UART_Receive_IT(&huart3, header_bytes, 25);
 
 
@@ -276,7 +282,10 @@ int main(void)
     //   printf("Channel %d: %d\n", i, teleop_commands.channels[i]);
     // }
 
-    printf("Value: %d\n", teleop_commands.arm_switch_status);
+    // Update the IMU readings, take most recent RC commands, and run control loop
+    MPU6050_Update_All(&hi2c1, &imu);
+
+    printf("IMU Data: %f\n", imu.filteredRoll);
 
     switch(current_state) {
       case UNCALIBRATED:
@@ -310,8 +319,14 @@ int main(void)
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
-        // state estimation and control loop goes ahead - in each timer interrupt iteration you must 
-        // create a 
+        // state estimation and control loop goes ahead based on flag set in 400 Hz timer interrupt
+        if (control_loop_deadline) {
+          // Update the IMU readings, take most recent RC commands, and run control loop
+          MPU6050_Update_All(&hi2c1, &imu);
+
+          printf("IMU Data: %f\n", imu.filteredRoll);
+          // update_controls(&imu, &teleop_commands);
+        }
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
         if (!teleop_commands.arm_switch_status) {
           current_state = DISARMED;
