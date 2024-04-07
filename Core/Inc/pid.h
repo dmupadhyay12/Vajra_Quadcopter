@@ -49,13 +49,13 @@ void initialize_controller(pid_controller_t* controller, float output_max, float
  * @param input_new --> New input/state of system
  * 
 */
-void update_controller(pid_t* controller, float setpoint_new, float updated_input);
+void update_controller(pid_controller_t* controller, float setpoint_new, float updated_input);
 /**
  * @brief computes output based on input and set of outputs - effectively runs the PID control algorithm
  * 
  * @param controller --> Pointer to PID struct whose controller is to be run
 */
-void compute_controller(pid_controller_t* controller);
+float compute_controller(pid_controller_t* controller);
 
 /**
  * @brief updates PID values for future expansion of OTA tuning

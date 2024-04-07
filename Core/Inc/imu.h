@@ -62,6 +62,11 @@
 #define MPU6050_ACCE_SENS_8			((float) 4096)
 #define MPU6050_ACCE_SENS_16		((float) 2048)
 
+typedef enum init_status {
+    POWER_CONFIG_FAILED,
+    SAMPLE_RATE_CONFIG_FAILED,
+} init_status_t;
+
 typedef struct {
 
     int16_t Accel_X_OFFSET;
@@ -77,6 +82,8 @@ typedef struct {
     double Gx;
     double Gy;
     double Gz;
+
+    int16_t sensorRawGx;
 
     float updatePeriod; // period, in seconds at which the update function is called at
 

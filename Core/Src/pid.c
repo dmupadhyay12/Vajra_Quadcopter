@@ -1,9 +1,6 @@
-// #include "stdbool.h"
-// #include "stdint.h"
+#include "pid.h"
 
-// #include "pid.h"
-
-void initialize_controller(pid_t* controller, float output_max, float output_min, float kp_in, float ki_in, float kd_in, float setpoint) {
+void initialize_controller(pid_controller_t* controller, float output_max, float output_min, float kp_in, float ki_in, float kd_in, float setpoint) {
     controller -> output_max = output_max;
     controller -> output_min = output_min;
     controller -> kp = kp_in;
@@ -13,12 +10,12 @@ void initialize_controller(pid_t* controller, float output_max, float output_min
     controller -> error_accumulation = 0;
 }
 
-void update_controller(pid_t* controller, float setpoint_new, float updated_input) {
+void update_controller(pid_controller_t* controller, float setpoint_new, float updated_input) {
     controller -> setpoint = setpoint_new; 
     controller -> curr_state = updated_input;
 }
 
-float compute_controller(pid_t* controller) {
+float compute_controller(pid_controller_t* controller) {
     // Based on the setpoint and input, compute the error, apply the PID constants, and 
     // update the error accumulation, previous differential
 

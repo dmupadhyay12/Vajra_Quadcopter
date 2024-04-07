@@ -33,6 +33,7 @@
 #include "actuator.h"
 #include "sbus.h"
 #include "imu.h"
+#include "pid.h"
 
 /* USER CODE END Includes */
 
@@ -106,6 +107,7 @@ MPU6050_t imu = {
   .Gx = 0,
   .Gy = 0,
   .Gz = 0,
+  .sensorRawGx = 15,
   .updatePeriod = 0,
   .temperature = 0,
   .accelRoll = 0,
@@ -115,6 +117,36 @@ MPU6050_t imu = {
   .alpha = 0,
   .filteredRoll = 0,
   .filteredPitch = 0,  
+};
+
+// Roll and Pitch Controller
+
+pid_controller_t roll_rate_control = {
+  .curr_state = 0,
+  .output = 0,
+  .setpoint = 0,
+  .kp = 0,
+  .ki = 0,
+  .kd = 0,
+  .output_max = 0,
+  .output_min = 0,
+  .error_accumulation = 0,
+  .prev_error = 0,
+  .control_loop_period = 0.0050,
+};
+
+pid_controller_t pitch_rate_control = {
+  .curr_state = 0,
+  .output = 0,
+  .setpoint = 0,
+  .kp = 0,
+  .ki = 0,
+  .kd = 0,
+  .output_max = 0,
+  .output_min = 0,
+  .error_accumulation = 0,
+  .prev_error = 0,
+  .control_loop_period = 0.0050,
 };
 
 /* USER CODE END PD */
@@ -175,7 +207,8 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+
+	HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -233,15 +266,8 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart3, header_bytes, 25);
   while (1)
-  { 
-
-    while(1) {
-      MPU6050_Update_All(&hi2c1, &imu);
-      printf("IMU Data: %f\n", imu.Ax);
-    }
+  {
     HAL_UART_Receive_IT(&huart3, header_bytes, 25);
-
-
     /*
     This is the superloop during which the following occurs:
     1.) All peripherals, sensor drivers, etc. are initialized
@@ -270,25 +296,16 @@ int main(void)
 
     */
 
-    // Update RC control state
-
-    pwm_update_percentage(&left_front_motor, 25);
-    pwm_update_percentage(&right_front_motor, 50);
-    pwm_update_percentage(&left_back_motor, 75);
-    pwm_update_percentage(&right_back_motor, 100);
-
     // Print all of the channel values:
     // for (int i = 0; i < 4; i++) {
     //   printf("Channel %d: %d\n", i, teleop_commands.channels[i]);
     // }
 
     // Update the IMU readings, take most recent RC commands, and run control loop
-    MPU6050_Update_All(&hi2c1, &imu);
-
-    printf("IMU Data: %f\n", imu.filteredRoll);
 
     switch(current_state) {
       case UNCALIBRATED:
+        printf("Calibrating\n");
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
@@ -296,18 +313,22 @@ int main(void)
         // vajra_calibrate();
 
         // Initialize IMU
-        MPU6050_Init(&hi2c1, &imu);
-        current_state = DISARMED;
+        uint8_t check_dev_val = MPU6050_Init(&hi2c1, &imu);
+        printf("Checkdev: %u\n", check_dev_val);
+        // if (MPU6050_Init(&hi2c1, &imu)) {
+        //   printf("IMU Initialized succesfully\n");
+        // } else {
+        //   printf("IMU Not initialized succesfully\n");
+        // }
+        printf("HOES MAD FR\n");
+        current_state = ARMED;
         break;
       case DISARMED:
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
 
-        // When the quadcopter is disarmed, it can only advance to an armed state if both sticks
-        // are in the bottom left of the box. 
-        // This occurs when all four channels are less than 10% 
-        printf("Hello!\n");
+        // When the quadcopter is disarmed, it can only advance to an armed state if the appropriate switch is flicked
         if (teleop_commands.arm_switch_status) {
           
           current_state = ARMED;
@@ -323,13 +344,21 @@ int main(void)
         if (control_loop_deadline) {
           // Update the IMU readings, take most recent RC commands, and run control loop
           MPU6050_Update_All(&hi2c1, &imu);
+          printf("Roll Degrees: %f\n", imu.Gx);
+          printf("Pitch Degrees: %f\n", imu.Gy);
+          // Update rollm pitch and yaw rate setpoints with min/max being 45 deg/seconds
+          // TODO: Setpoint mapper function defined in sbus.h
 
-          printf("IMU Data: %f\n", imu.filteredRoll);
+          // Update setpoint on all three axes controllers
           // update_controls(&imu, &teleop_commands);
+
+          // Output mixer - take outputs of three controllers, and apply on each motor 
+          // depending on position and direction
+          // TODO: Develop function to write to all four RC outputs at once
         }
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
         if (!teleop_commands.arm_switch_status) {
-          current_state = DISARMED;
+          // current_state = DISARMED;
         }
         break;
     }

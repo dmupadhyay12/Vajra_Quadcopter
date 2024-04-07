@@ -3,18 +3,18 @@
 #include <math.h>
 
 uint8_t MPU6050_Init(I2C_HandleTypeDef* handle, MPU6050_t* data) {
-    while (HAL_I2C_IsDeviceReady(handle, (uint16_t)MPU6050_I2C_ADDR, 10, 10) != HAL_ERROR) {
-        // Wait for IMU to become ready and return HAL_OKAY
+    while (HAL_I2C_IsDeviceReady(handle, (uint8_t)MPU6050_I2C_ADDR, 10, 10) == HAL_ERROR) {
+        // Wait for IMU to become ready and return HAL_OK
     }
 
     // Verify identity of device
-    uint8_t WHO_AM_I = (uint8_t) MPU6050_WHO_AM_I;
+    uint16_t WHO_AM_I = (uint16_t) MPU6050_WHO_AM_I;
     uint8_t readRes = 0;
     uint8_t checkDev = 0; 
 
-    HAL_I2C_Mem_Read(handle, MPU6050_I2C_ADDR, WHO_AM_I, 1, &checkDev, 1, 10);
+    HAL_I2C_Mem_Read(handle, (uint8_t)MPU6050_I2C_ADDR, WHO_AM_I, 1, &checkDev, 1, 10);
 
-    if (checkDev == MPU6050_I_AM) {
+    if (checkDev == (uint8_t)MPU6050_I_AM) {
         // Device validated to be MPU6050 IMU - now to run a variety of configurations
 
         /* 
@@ -24,27 +24,29 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef* handle, MPU6050_t* data) {
          - Gyro speed set to max -250 deg/s to +250 deg/s
          - Digital low pass filter set, 94 Hz for Accelerometer, 98 Hz for Gyroscope
         */ 
-
+        HAL_StatusTypeDef status = HAL_ERROR;
         uint8_t powerManagementState = 0;
-        HAL_I2C_Mem_Write(handle, MPU6050_I2C_ADDR, MPU6050_PWR_MGMT_1, 1, &powerManagementState, 1, 10);
+        status = HAL_I2C_Mem_Write(handle, (uint16_t)MPU6050_I2C_ADDR, (uint16_t)MPU6050_PWR_MGMT_1, 1, &powerManagementState, 1, 10);
 
         uint8_t sampleDivider = 8; // divide 8 kHz by 8 yields 1 kHz rate
-        HAL_I2C_Mem_Write(handle, MPU6050_I2C_ADDR, MPU6050_SMPLRT_DIV, 1, &sampleDivider, 1, 10); 
+        status = HAL_I2C_Mem_Write(handle, (uint16_t)MPU6050_I2C_ADDR, (uint16_t)MPU6050_SMPLRT_DIV, 1, &sampleDivider, 1, 10); 
 
         uint8_t accel2GValue = 0;
-        HAL_I2C_Mem_Write(handle, MPU6050_I2C_ADDR, MPU6050_ACCEL_CONFIG, 1, &accel2GValue, 1, 10);
+        status = HAL_I2C_Mem_Write(handle, (uint16_t)MPU6050_I2C_ADDR, (uint16_t)MPU6050_ACCEL_CONFIG, 1, &accel2GValue, 1, 10);
 
         uint8_t gyro250DegPerSec = 0;
-        HAL_I2C_Mem_Write(handle, MPU6050_I2C_ADDR, MPU6050_GYRO_CONFIG, 1, &gyro250DegPerSec, 1, 10);
+        status = HAL_I2C_Mem_Write(handle, (uint16_t)MPU6050_I2C_ADDR, (uint16_t)MPU6050_GYRO_CONFIG, 1, &gyro250DegPerSec, 1, 10);
 
         // Set Digital low pass (DLPF) filter settings
         uint8_t dlpfSetting = 0x02;
-        HAL_I2C_Mem_Write(handle, MPU6050_I2C_ADDR, MPU6050_CONFIG, 1, &dlpfSetting, 1, 10);
+        status = HAL_I2C_Mem_Write(handle, (uint16_t)MPU6050_I2C_ADDR, (uint16_t)MPU6050_CONFIG, 1, &dlpfSetting, 1, 10);
 
         // Delay 10ms and then run calibration process
         HAL_Delay(10);
         MPU6050_Calibrate_IMU(handle, data);
+        return 1;
     }
+    return 0;
 }
 
 void MPU6050_Calibrate_IMU(I2C_HandleTypeDef* handle, MPU6050_t* data) {
@@ -108,6 +110,7 @@ void MPU6050_Update_All(I2C_HandleTypeDef* handle, MPU6050_t* data) {
     data -> Gy = (sensorRaw[5] - data -> Gyro_Y_OFFSET) / MPU6050_GYRO_SENS_250;
     data -> Gz = (sensorRaw[6] - data -> Gyro_Z_OFFSET) / MPU6050_GYRO_SENS_250;
 
+    data -> sensorRawGx = sensorRaw[4];
     // Calculate roll and pitch estimation via gyroscope
     data -> gyroPitch += (data -> updatePeriod) * (data -> Gx);
     data -> gyroRoll += (data -> updatePeriod) * (data -> Gy);
@@ -125,13 +128,13 @@ int16_t MPU6050_Get_Accel_Raw(I2C_HandleTypeDef* handle, axis_t axis) {
     uint8_t accelData[2] = {0};
     uint16_t accelToReturn = 0;
     if (axis == X) {
-        HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_XOUT_H, 1, accelData, 2, 10);
+        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_XOUT_H, 1, accelData, 2, 10);
         accelToReturn = (accelData[0] << 8 | accelData[1]);
     } else if (axis == Y) {
-        HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_YOUT_H, 1, accelData, 2, 10);
+        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_YOUT_H, 1, accelData, 2, 10);
         accelToReturn = (accelData[0] << 8 | accelData[1]); 
     } else {
-        HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_ZOUT_H, 1, accelData, 2, 10);
+        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_ZOUT_H, 1, accelData, 2, 10);
         accelToReturn = (accelData[0] << 8 | accelData[1]);
     }
 
@@ -142,13 +145,13 @@ int16_t MPU6050_Get_Gyro_Raw(I2C_HandleTypeDef* handle, axis_t axis) {
     uint8_t gyroData[2] = {0};
     int16_t gyroToReturn = 0;
     if (axis == X) {
-        HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_XOUT_H, 1, gyroData, 2, 10);
+        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_XOUT_H, 1, gyroData, 2, 10);
         gyroToReturn = (gyroData[0] << 8 | gyroData[1]);
     } else if (axis == Y) {
-        HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_YOUT_H, 1, gyroData, 2, 10);
+        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_YOUT_H, 1, gyroData, 2, 10);
         gyroToReturn = (gyroData[0] << 8 | gyroData[1]); 
     } else {
-        HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_ZOUT_H, 1, gyroData, 2, 10);
+        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_ZOUT_H, 1, gyroData, 2, 10);
         gyroToReturn = (gyroData[0] << 8 | gyroData[1]);
     }
     
@@ -158,8 +161,9 @@ int16_t MPU6050_Get_Gyro_Raw(I2C_HandleTypeDef* handle, axis_t axis) {
 void MPU6050_Get_All_Raw(I2C_HandleTypeDef* handle, int16_t* sensorReadingsArray) {
     // write 14 bytes to byte array passed into the function
     uint8_t bytes[14] = {0};
-    HAL_I2C_Mem_Read(handle, MPU6050_WHO_AM_I, MPU6050_ACCEL_XOUT_H, 1, bytes, 14, 10);
+    uint16_t address = (uint16_t) MPU6050_ACCEL_XOUT_H;
 
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_I2C_ADDR, address, 1, bytes, 14, 1000);
     // Write data from bytes array into sensor readings array
     // Mapped as seven element array - AccelX, AccelY, AccelZ, Temperature, GyroX, GyroY, GyroZ
 
@@ -167,11 +171,9 @@ void MPU6050_Get_All_Raw(I2C_HandleTypeDef* handle, int16_t* sensorReadingsArray
     sensorReadingsArray[1] = (int16_t) ((bytes[2] << 8) | (bytes[3]));
     sensorReadingsArray[2] = (int16_t) ((bytes[4] << 8) | (bytes[5]));
     sensorReadingsArray[3] = (int16_t) ((bytes[6] << 8) | (bytes[7]));
-    sensorReadingsArray[4] = (int16_t) ((bytes[7] << 8) | (bytes[8]));
-    sensorReadingsArray[5] = (int16_t) ((bytes[9] << 8) | (bytes[10]));
-    sensorReadingsArray[6] = (int16_t) ((bytes[11] << 8) | (bytes[12]));
-    sensorReadingsArray[7] = (int16_t) ((bytes[13] << 8) | (bytes[14]));
-
+    sensorReadingsArray[4] = (int16_t) ((bytes[8] << 8) | (bytes[9]));
+    sensorReadingsArray[5] = (int16_t) ((bytes[10] << 8) | (bytes[11]));
+    sensorReadingsArray[6] = (int16_t) ((bytes[12] << 8) | (bytes[13]));
 }
 
 void MPU6050_Apply_Filter(MPU6050_t* data) {
