@@ -43,7 +43,7 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef* handle, MPU6050_t* data) {
 
         // Delay 10ms and then run calibration process
         HAL_Delay(10);
-        MPU6050_Calibrate_IMU(handle, data);
+        // MPU6050_Calibrate_IMU(handle, data);
         return 1;
     }
     return 0;
@@ -53,34 +53,38 @@ void MPU6050_Calibrate_IMU(I2C_HandleTypeDef* handle, MPU6050_t* data) {
     // Takes 1000 raw values for gyro and accelerometer and finds offsets
 
     int16_t accelZExpected = -1 * MPU6050_ACCE_SENS_2; // should be -g
-    int16_t accelXCumulative = 0;
-    int16_t accelYCumulative = 0;
-    int16_t accelZCumulative = 0;
+    double accelXCumulative = 0;
+    double accelYCumulative = 0;
+    double accelZCumulative = 0;
 
-    int16_t gyroXCumulative = 0;
-    int16_t gyroYCumulative = 0;
-    int16_t gyroZCumulative = 0;
+    double gyroXCumulative = 0;
+    double gyroYCumulative = 0;
+    double gyroZCumulative = 0;
 
     int16_t sensorRaw[7] = {0};
     for (int i = 0; i < 1000; i++) {
         MPU6050_Get_All_Raw(handle, sensorRaw);
 
-        accelXCumulative += sensorRaw[0];
-        accelYCumulative += sensorRaw[1];
-        accelZCumulative += sensorRaw[2];
+        accelXCumulative += sensorRaw[0] / (double)MPU6050_ACCE_SENS_2;
+        accelYCumulative += sensorRaw[1] / (double)MPU6050_ACCE_SENS_2;
+        accelZCumulative += sensorRaw[2] / (double)MPU6050_ACCE_SENS_2;
         
-        gyroXCumulative += sensorRaw[4];
-        gyroYCumulative += sensorRaw[5];
-        gyroZCumulative += sensorRaw[6];
+        gyroXCumulative += sensorRaw[4] / (double)MPU6050_GYRO_SENS_250;
+        gyroYCumulative += sensorRaw[5] / (double)MPU6050_GYRO_SENS_250;
+        gyroZCumulative += sensorRaw[6] / (double)MPU6050_GYRO_SENS_250;
     }
 
-    int16_t accelXAverage = accelXCumulative / 1000;
-    int16_t accelYAverage = accelYCumulative / 1000;
-    int16_t accelZAverage = accelZAverage / 1000;
 
-    int16_t gyroXAverage = gyroXCumulative / 1000;
-    int16_t gyroYAverage = gyroYCumulative / 1000;
-    int16_t gyroZAverage = gyroZAverage / 1000;
+    double accelXAverage = accelXCumulative / 1000;
+    double accelYAverage = accelYCumulative / 1000;
+    double accelZAverage = accelZCumulative / 1000;
+
+    double gyroXAverage = gyroXCumulative / 1000;
+    double gyroYAverage = gyroYCumulative / 1000;
+    double gyroZAverage = gyroZCumulative / 1000;
+
+    data -> gyroXCumulative = gyroXAverage;
+
 
     // Find and update the offsets for each sensor and axis
     data -> Accel_X_OFFSET = accelXAverage;
@@ -102,15 +106,15 @@ void MPU6050_Update_All(I2C_HandleTypeDef* handle, MPU6050_t* data) {
     int16_t sensorRaw[7] = {0};
     MPU6050_Get_All_Raw(handle, sensorRaw);
 
-    data -> Ax = (sensorRaw[0] - data -> Accel_X_OFFSET) / MPU6050_ACCE_SENS_2;
-    data -> Ay = (sensorRaw[1] - data -> Accel_X_OFFSET) / MPU6050_ACCE_SENS_2;
-    data -> Az = (sensorRaw[2] - data -> Accel_Z_OFFSET) / MPU6050_ACCE_SENS_2;
+    data -> Ax = (sensorRaw[0]/* - data -> Accel_X_OFFSET*/) / (double)MPU6050_ACCE_SENS_2;
+    data -> Ay = (sensorRaw[1]/* - data -> Accel_X_OFFSET*/) / (double)MPU6050_ACCE_SENS_2;
+    data -> Az = (sensorRaw[2]/* - data -> Accel_Z_OFFSET*/) / (double)MPU6050_ACCE_SENS_2;
     
-    data -> Gx = (sensorRaw[4] - data -> Gyro_X_OFFSET) / MPU6050_GYRO_SENS_250;
-    data -> Gy = (sensorRaw[5] - data -> Gyro_Y_OFFSET) / MPU6050_GYRO_SENS_250;
-    data -> Gz = (sensorRaw[6] - data -> Gyro_Z_OFFSET) / MPU6050_GYRO_SENS_250;
+    data -> Gx = (sensorRaw[4]) / (double)MPU6050_GYRO_SENS_250 - data -> Gyro_X_OFFSET;
+    data -> Gy = (sensorRaw[5]) / (double)MPU6050_GYRO_SENS_250 - data -> Gyro_Y_OFFSET;
+    data -> Gz = (sensorRaw[6]) / (double)MPU6050_GYRO_SENS_250 - data -> Gyro_Z_OFFSET;
 
-    data -> sensorRawGx = sensorRaw[4];
+    // data -> sensorRawGx = sensorRaw[4];
     // Calculate roll and pitch estimation via gyroscope
     data -> gyroPitch += (data -> updatePeriod) * (data -> Gx);
     data -> gyroRoll += (data -> updatePeriod) * (data -> Gy);

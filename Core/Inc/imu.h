@@ -69,21 +69,21 @@ typedef enum init_status {
 
 typedef struct {
 
-    int16_t Accel_X_OFFSET;
-    int16_t Accel_Y_OFFSET;
-    int16_t Accel_Z_OFFSET;
+    double Accel_X_OFFSET;
+    double Accel_Y_OFFSET;
+    double Accel_Z_OFFSET;
     double Ax;
     double Ay;
     double Az;
 
-    int16_t Gyro_X_OFFSET;
-    int16_t Gyro_Y_OFFSET;
-    int16_t Gyro_Z_OFFSET;
+    double Gyro_X_OFFSET;
+    double Gyro_Y_OFFSET;
+    double Gyro_Z_OFFSET;
     double Gx;
     double Gy;
     double Gz;
 
-    int16_t sensorRawGx;
+    float gyroXCumulative;
 
     float updatePeriod; // period, in seconds at which the update function is called at
 

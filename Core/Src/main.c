@@ -107,7 +107,7 @@ MPU6050_t imu = {
   .Gx = 0,
   .Gy = 0,
   .Gz = 0,
-  .sensorRawGx = 15,
+  .gyroXCumulative = 0,
   .updatePeriod = 0,
   .temperature = 0,
   .accelRoll = 0,
@@ -264,6 +264,17 @@ int main(void)
   /* USER CODE END PFP */
   // Kick off receiving new packets
 
+  printf("======================================\n");
+
+  printf("#     #    #          # ######     #    \n");
+  printf("#     #   # #         # #     #   # #   \n");  
+  printf("#     #  #   #        # #     #  #   #  \n");
+  printf("#     # #     #       # ######  #     # \n");
+  printf(" #   #  ####### #     # #   #   #######  \n"); 
+  printf("  # #   #     # #     # #    #  #     #   \n");
+  printf("   #    #     #  #####  #     # #     #    \n");
+
+
   HAL_UART_Receive_IT(&huart3, header_bytes, 25);
   while (1)
   {
@@ -296,32 +307,20 @@ int main(void)
 
     */
 
-    // Print all of the channel values:
-    // for (int i = 0; i < 4; i++) {
-    //   printf("Channel %d: %d\n", i, teleop_commands.channels[i]);
-    // }
-
-    // Update the IMU readings, take most recent RC commands, and run control loop
-
     switch(current_state) {
       case UNCALIBRATED:
         printf("Calibrating\n");
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
-        // Run calibration steps and advance state to DISARMED
-        // vajra_calibrate();
 
         // Initialize IMU
         uint8_t check_dev_val = MPU6050_Init(&hi2c1, &imu);
-        printf("Checkdev: %u\n", check_dev_val);
-        // if (MPU6050_Init(&hi2c1, &imu)) {
-        //   printf("IMU Initialized succesfully\n");
-        // } else {
-        //   printf("IMU Not initialized succesfully\n");
-        // }
-        printf("HOES MAD FR\n");
-        current_state = ARMED;
+
+        HAL_Delay(1000);
+        MPU6050_Calibrate_IMU(&hi2c1, &imu);
+
+        current_state = DISARMED;
         break;
       case DISARMED:
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
@@ -344,8 +343,7 @@ int main(void)
         if (control_loop_deadline) {
           // Update the IMU readings, take most recent RC commands, and run control loop
           MPU6050_Update_All(&hi2c1, &imu);
-          printf("Roll Degrees: %f\n", imu.Gx);
-          printf("Pitch Degrees: %f\n", imu.Gy);
+
           // Update rollm pitch and yaw rate setpoints with min/max being 45 deg/seconds
           // TODO: Setpoint mapper function defined in sbus.h
 
@@ -358,7 +356,7 @@ int main(void)
         }
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
         if (!teleop_commands.arm_switch_status) {
-          // current_state = DISARMED;
+          current_state = DISARMED;
         }
         break;
     }
