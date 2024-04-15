@@ -274,6 +274,8 @@ int main(void)
   printf("  # #   #     # #     # #    #  #     #   \n");
   printf("   #    #     #  #####  #     # #     #    \n");
 
+  printf("=======================================\n");
+
 
   HAL_UART_Receive_IT(&huart3, header_bytes, 25);
   while (1)
@@ -344,15 +346,31 @@ int main(void)
           // Update the IMU readings, take most recent RC commands, and run control loop
           MPU6050_Update_All(&hi2c1, &imu);
 
-          // Update rollm pitch and yaw rate setpoints with min/max being 45 deg/seconds
-          // TODO: Setpoint mapper function defined in sbus.h
+          // Update roll pitch and yaw rate setpoints with min/max being 45 deg/seconds
 
-          // Update setpoint on all three axes controllers
-          // update_controls(&imu, &teleop_commands);
+          float roll_setpoint = generate_setpoints(teleop_commands, ROLL);
+          float pitch_setpoint = generate_setpoints(teleop_commands, PITCH);
+          float yaw_setpoint = generate_setpoints(teleop_commands, YAW);
 
-          // Output mixer - take outputs of three controllers, and apply on each motor 
-          // depending on position and direction
-          // TODO: Develop function to write to all four RC outputs at once
+          update_controller(&roll_rate_control, roll_setpoint, imu.Gy);
+          update_controller(&pitch_rate_control, pitch_setpoint, imu.Gx);
+          update_controller(&yaw_rate_controller, yaw_setpoint, imu.Gz);
+
+          // Run the PID controllers
+          float roll_new = compute_controller(&roll_rate_control);
+          float pitch_new = compute_controller(&pitch_rate_control);
+          float yaw_new = compute_controller(&yaw_rate_control);
+          
+          // Based on positions of the motors, add or subtract controller outputs
+          // on the throttle value, and apply onto the RC outputs
+
+          // TEMPORARY: Currently only adding the throttle data onto the motors
+
+          pwm_update_percentage(&left_back_motor, teleop_commands.throttle);
+          pwm_update_percentage(&left_front_motor, teleop_commands.throttle);
+          pwm_update_percentage(&right_back_motor, teleop_commands.throttle);
+          pwm_update_percentage(&right_front_motor, teleop_commands.throttle);
+
         }
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
         if (!teleop_commands.arm_switch_status) {

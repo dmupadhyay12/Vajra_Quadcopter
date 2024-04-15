@@ -13,6 +13,21 @@ float map(uint16_t low_val, uint16_t high_val, uint16_t val_to_map) {
     return mapped_val;
 }
 
+// Assuming max rate magnitude of 45 deg/s at the moment
+float generate_setpoint(channel_info_t* channel_info, channel_axis_t axis) {
+    float range = 90.0;
+    float absolute_value = 0.0;
+    float setpoint = 0;
+    if (axis == ROLL) {
+        absolute_value = range * channel_info -> roll / 100.0;
+    } else if (axis == YAW) {
+        absolute_value = range * channel_info -> yaw / 100.0;
+    } else if (axis == PITCH) {
+        absolute_value = range * channel_info -> pitch / 100.0;
+    }
+    return -45.0 + absolute_value;
+}
+
 void update_channels(channel_info_t* channel_info, uint8_t* buf) {
     // iterates through the 25-byte buffer received as per SBUS protocol
     // updates the channels when a new packet is received
@@ -53,6 +68,10 @@ void update_channels(channel_info_t* channel_info, uint8_t* buf) {
         // For channels 0 through 3, map inputs from -100 to +100
 
         channel_info -> throttle = map(CHANNEL_0_LOW, CHANNEL_0_HIGH, channel_info -> channels[0]);
+
+        // Remap throttle to 0-100% instead of -100% to 100%
+        channel_info -> throttle = ((channel_info -> throttle) + 100) / 2.0;
+
         channel_info -> roll = map(CHANNEL_1_LOW, CHANNEL_1_HIGH, channel_info -> channels[1]);
         channel_info -> pitch = map(CHANNEL_2_LOW, CHANNEL_2_HIGH, channel_info -> channels[2]);
         channel_info -> yaw = map(CHANNEL_3_LOW, CHANNEL_3_HIGH, channel_info -> channels[3]);
@@ -62,5 +81,14 @@ void update_channels(channel_info_t* channel_info, uint8_t* buf) {
         } else {
             channel_info -> arm_switch_status = false;
         }
+
+        // Map the percentages to rate setpoints with a min/max of -45 to +45 deg/s
+
+        float roll_setpoint = generate_setpoint(-45, +45, channel_info -> roll);
+        float yaw_setpoint = generate_setpoint(-45, 45, channel_info -> yaw);
+        float pitch_setpoint = generate_setpoint(-45, 45, channel_info -> pitch);
+
+
+
     }
 }

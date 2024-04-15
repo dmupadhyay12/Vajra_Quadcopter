@@ -16,6 +16,13 @@
 #define CHANNEL_3_HIGH 1811
 #define CHANNEL_4_THRESHOLD 1800
 
+typedef enum {
+    ROLL = 0,
+    PITCH = 1,
+    YAW = 2,
+    THROTTLE = 3,
+} channel_axis_t;
+
 typedef struct channel_info {
     uint16_t channels[18];
     float throttle;
@@ -28,5 +35,7 @@ typedef struct channel_info {
 } channel_info_t;
 
 void update_channels(channel_info_t* channel_info, uint8_t* buf);
+
+float generate_setpoints(channel_info_t* channel_info, channel_axis_t axis);
 
 #endif
