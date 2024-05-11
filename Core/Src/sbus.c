@@ -14,7 +14,7 @@ float map(uint16_t low_val, uint16_t high_val, uint16_t val_to_map) {
 }
 
 // Assuming max rate magnitude of 45 deg/s at the moment
-float generate_setpoint(channel_info_t* channel_info, channel_axis_t axis) {
+float generate_setpoints(channel_info_t* channel_info, channel_axis_t axis) {
     float range = 90.0;
     float absolute_value = 0.0;
     float setpoint = 0;
@@ -84,9 +84,9 @@ void update_channels(channel_info_t* channel_info, uint8_t* buf) {
 
         // Map the percentages to rate setpoints with a min/max of -45 to +45 deg/s
 
-        float roll_setpoint = generate_setpoint(-45, +45, channel_info -> roll);
-        float yaw_setpoint = generate_setpoint(-45, 45, channel_info -> yaw);
-        float pitch_setpoint = generate_setpoint(-45, 45, channel_info -> pitch);
+        float roll_setpoint = generate_setpoints(channel_info, ROLL);
+        float yaw_setpoint = generate_setpoints(channel_info, YAW);
+        float pitch_setpoint = generate_setpoints(channel_info, PITCH);
 
 
 

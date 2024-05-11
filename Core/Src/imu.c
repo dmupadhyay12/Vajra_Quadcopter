@@ -83,9 +83,6 @@ void MPU6050_Calibrate_IMU(I2C_HandleTypeDef* handle, MPU6050_t* data) {
     double gyroYAverage = gyroYCumulative / 1000;
     double gyroZAverage = gyroZCumulative / 1000;
 
-    data -> gyroXCumulative = gyroXAverage;
-
-
     // Find and update the offsets for each sensor and axis
     data -> Accel_X_OFFSET = accelXAverage;
     data -> Accel_Y_OFFSET = accelYAverage;
@@ -106,15 +103,14 @@ void MPU6050_Update_All(I2C_HandleTypeDef* handle, MPU6050_t* data) {
     int16_t sensorRaw[7] = {0};
     MPU6050_Get_All_Raw(handle, sensorRaw);
 
-    data -> Ax = (sensorRaw[0]/* - data -> Accel_X_OFFSET*/) / (double)MPU6050_ACCE_SENS_2;
-    data -> Ay = (sensorRaw[1]/* - data -> Accel_X_OFFSET*/) / (double)MPU6050_ACCE_SENS_2;
-    data -> Az = (sensorRaw[2]/* - data -> Accel_Z_OFFSET*/) / (double)MPU6050_ACCE_SENS_2;
+    data -> Ax = (sensorRaw[0]) / (double)MPU6050_ACCE_SENS_2 - data -> Accel_X_OFFSET;
+    data -> Ay = (sensorRaw[1]) / (double)MPU6050_ACCE_SENS_2 - data -> Accel_X_OFFSET;
+    data -> Az = (sensorRaw[2]) / (double)MPU6050_ACCE_SENS_2 - data -> Accel_Z_OFFSET;
     
     data -> Gx = (sensorRaw[4]) / (double)MPU6050_GYRO_SENS_250 - data -> Gyro_X_OFFSET;
     data -> Gy = (sensorRaw[5]) / (double)MPU6050_GYRO_SENS_250 - data -> Gyro_Y_OFFSET;
     data -> Gz = (sensorRaw[6]) / (double)MPU6050_GYRO_SENS_250 - data -> Gyro_Z_OFFSET;
 
-    // data -> sensorRawGx = sensorRaw[4];
     // Calculate roll and pitch estimation via gyroscope
     data -> gyroPitch += (data -> updatePeriod) * (data -> Gx);
     data -> gyroRoll += (data -> updatePeriod) * (data -> Gy);
@@ -126,40 +122,6 @@ void MPU6050_Update_All(I2C_HandleTypeDef* handle, MPU6050_t* data) {
     // Apply sensor fusion algorithm (currently only complementary filter)
     MPU6050_Apply_Filter(data);
 
-}
-
-int16_t MPU6050_Get_Accel_Raw(I2C_HandleTypeDef* handle, axis_t axis) {
-    uint8_t accelData[2] = {0};
-    uint16_t accelToReturn = 0;
-    if (axis == X) {
-        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_XOUT_H, 1, accelData, 2, 10);
-        accelToReturn = (accelData[0] << 8 | accelData[1]);
-    } else if (axis == Y) {
-        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_YOUT_H, 1, accelData, 2, 10);
-        accelToReturn = (accelData[0] << 8 | accelData[1]); 
-    } else {
-        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_ZOUT_H, 1, accelData, 2, 10);
-        accelToReturn = (accelData[0] << 8 | accelData[1]);
-    }
-
-    return accelToReturn;
-}
-
-int16_t MPU6050_Get_Gyro_Raw(I2C_HandleTypeDef* handle, axis_t axis) {
-    uint8_t gyroData[2] = {0};
-    int16_t gyroToReturn = 0;
-    if (axis == X) {
-        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_XOUT_H, 1, gyroData, 2, 10);
-        gyroToReturn = (gyroData[0] << 8 | gyroData[1]);
-    } else if (axis == Y) {
-        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_YOUT_H, 1, gyroData, 2, 10);
-        gyroToReturn = (gyroData[0] << 8 | gyroData[1]); 
-    } else {
-        HAL_I2C_Mem_Read(handle, (uint16_t)MPU6050_WHO_AM_I, (uint16_t)MPU6050_ACCEL_ZOUT_H, 1, gyroData, 2, 10);
-        gyroToReturn = (gyroData[0] << 8 | gyroData[1]);
-    }
-    
-    return gyroToReturn;
 }
 
 void MPU6050_Get_All_Raw(I2C_HandleTypeDef* handle, int16_t* sensorReadingsArray) {

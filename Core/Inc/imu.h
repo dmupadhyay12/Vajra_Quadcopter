@@ -83,8 +83,6 @@ typedef struct {
     double Gy;
     double Gz;
 
-    float gyroXCumulative;
-
     float updatePeriod; // period, in seconds at which the update function is called at
 
     float temperature;
@@ -112,8 +110,6 @@ void MPU6050_Read_Accel_Raw(I2C_HandleTypeDef* handle, MPU6050_t* data);
 void MPU6050_Read_Gyro_Raw(I2C_HandleTypeDef* handle, MPU6050_t* data);
 void MPU6050_Read_Temperature(I2C_HandleTypeDef* handle, MPU6050_t* data);
 
-int16_t MPU6050_Get_Accel_Raw(I2C_HandleTypeDef* handle, axis_t axis);
-int16_t MPU6050_Get_Gyro_Raw(I2C_HandleTypeDef* handle, axis_t axis);
 void MPU6050_Get_All_Raw(I2C_HandleTypeDef* handle, int16_t* sensorReadingsArray);
 
 void MPU6050_Update_All(I2C_HandleTypeDef* handle, MPU6050_t* data);
