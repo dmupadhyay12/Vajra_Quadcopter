@@ -75,9 +75,6 @@ const osThreadAttr_t logger_handle_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void start_control_loop(void *argument);
-void logger_init(void *argument);
-
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /**
@@ -108,10 +105,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* creation of control_loop */
-  control_loopHandle = osThreadNew(start_control_loop, NULL, &control_loop_attributes);
+  control_loopHandle = osThreadNew(control_loop, NULL, &control_loop_attributes);
 
   /* creation of logger */
-  loggerHandle = osThreadNew(logger_init, NULL, &logger_attributes);
+  loggerHandle = osThreadNew(logger_task, NULL, &logger_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 //   /* add threads, ... */
@@ -130,40 +127,6 @@ void MX_FREERTOS_Init(void) {
 //   * @retval None
 //   */
 /* USER CODE END Header_start_control_loop */
-void start_control_loop(void *argument)
-{
-  /* USER CODE BEGIN start_control_loop */
-//   /* Infinite loop */
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  for(;;)
-  {
-    vTaskDelayUntil(&xLastWakeTime, 100);
-    HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
-    // osDelay(200);
-  }
-  /* USER CODE END start_control_loop */
-}
-
-/* USER CODE BEGIN Header_logger_init */
-// /**
-// * @brief Function implementing the logger thread.
-// * @param argument: Not used
-// * @retval None
-// */
-/* USER CODE END Header_logger_init */
-void logger_init(void *argument)
-{
-  /* USER CODE BEGIN logger_init */
-//   /* Infinite loop */
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  for(;;)
-  {
-    vTaskDelayUntil(&xLastWakeTime, 200);    
-    HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
-
-  }
-  /* USER CODE END logger_init */
-}
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
