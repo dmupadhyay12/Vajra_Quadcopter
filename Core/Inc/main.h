@@ -110,6 +110,7 @@ void Error_Handler(void);
 
 void logger_task(void *argument);
 void control_loop(void *argument);
+void rc_input_task(void* argument);
 
 /* USER CODE END Private defines */
 

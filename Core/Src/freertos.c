@@ -53,21 +53,22 @@ osThreadId_t control_loopHandle;
 const osThreadAttr_t control_loop_attributes = {
   .name = "control_loop",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for logger */
 osThreadId_t loggerHandle;
 const osThreadAttr_t logger_attributes = {
   .name = "logger",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal5,
+  .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for logger_handle */
-osThreadId_t logger_handleHandle;
-const osThreadAttr_t logger_handle_attributes = {
-  .name = "logger_handle",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+
+/* Definition for RC input loop */
+osThreadId_t rc_inputHandle;
+const osThreadAttr_t rc_input_attributes = {
+  .name = "rc_input",
+  .stack_size = 128 * 3,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,6 +111,8 @@ void MX_FREERTOS_Init(void) {
   /* creation of logger */
   loggerHandle = osThreadNew(logger_task, NULL, &logger_attributes);
 
+  /* creation of rc_input */
+  rc_inputHandle = osThreadNew(rc_input_task, NULL, &rc_input_attributes);
   /* USER CODE BEGIN RTOS_THREADS */
 //   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */

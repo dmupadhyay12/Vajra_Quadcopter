@@ -83,6 +83,11 @@ actuator_config_t right_back_motor = {
   .min_pulse_width = 1,
 };
 
+// Global variable to hold the state of the system
+
+typedef enum {UNCALIBRATED, DISARMED, ARMED} quadcopter_state_t;
+
+quadcopter_state_t current_state = UNCALIBRATED;
 
 
 // input channels configuration
@@ -169,7 +174,6 @@ pid_controller_t pitch_rate_control = {
 //   .priority = (osPriority_t) osPriorityBelowNormal5,
 // };
 
-  typedef enum {UNCALIBRATED, DISARMED, ARMED} quadcopter_state_t;
 
 /* USER CODE END PD */
 
@@ -191,6 +195,7 @@ void MX_FREERTOS_Init(void);
 volatile bool control_loop_deadline = false;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {  
   if (htim == &htim3) {
+    // printf("Timer interrupt called\n");
     control_loop_deadline = true;
   } else if (htim->Instance == TIM6) {
     HAL_IncTick();
@@ -225,15 +230,15 @@ void logger_task(void* argument) {
 }
 
 void control_loop(void* argument) {
-  quadcopter_state_t current_state = UNCALIBRATED;
 
-  // HAL_UART_Receive_IT(&huart3, header_bytes, 25);
+  HAL_UART_Receive_IT(&huart3, header_bytes, 25);
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
 
   for (;;) {
     vTaskDelayUntil(&xLastWakeTime, 400);
-      /*
+
+    /*
     This is the superloop during which the following occurs:
     1.) All peripherals, sensor drivers, etc. are initialized
     2.) A state machine holding and managing the different states of the 
@@ -277,13 +282,14 @@ void control_loop(void* argument) {
         current_state = DISARMED;
         break;
       case DISARMED:
+        printf("Disarmed\n");
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
 
         // When the quadcopter is disarmed, it can only advance to an armed state if the appropriate switch is flicked
         if (teleop_commands.arm_switch_status) {
-          
+          printf("Switch set motherfuckerrrr\n");
           current_state = ARMED;
         } else {
           // Continue in disarmed state 
@@ -331,6 +337,12 @@ void control_loop(void* argument) {
         break;
     }
     HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
+  }
+}
+
+void rc_input_task(void* argument) {
+  for (;;) {
+    HAL_UART_Receive_IT(&huart3, header_bytes, 25);
   }
 }
 
@@ -409,6 +421,7 @@ int main(void)
 
   printf("=======================================\n");
 
+
   /* USER CODE END 2 */
 
 
@@ -428,114 +441,114 @@ int main(void)
   /* USER CODE END PFP */
   // Kick off receiving new packets
 
-  // HAL_UART_Receive_IT(&huart3, header_bytes, 25);  
   
-  // while (1)
-  // {
-  //   HAL_UART_Receive_IT(&huart3, header_bytes, 25);
-  //   /*
-  //   This is the superloop during which the following occurs:
-  //   1.) All peripherals, sensor drivers, etc. are initialized
-  //   2.) A state machine holding and managing the different states of the 
-  //       quadcopter is setup and tracks when conditions to switch states occur
+  while (1)
+  {
 
-  //   The following is a list of states for the quadcopter
+    // HAL_UART_Receive_IT(&huart3, header_bytes, 25);
+    // /*
+    // This is the superloop during which the following occurs:
+    // 1.) All peripherals, sensor drivers, etc. are initialized
+    // 2.) A state machine holding and managing the different states of the 
+    //     quadcopter is setup and tracks when conditions to switch states occur
 
-  //   UNCALIBRATED: 
-  //   State when the quadcopter is just powered on and the ESC calibration isn't complete, IMU, other sensors
-  //   are still being initialized
+    // The following is a list of states for the quadcopter
 
-  //   DISARMED:
-  //   Once the calibration and other initialization is complete, the drone is able to fly but is disarmed. 
-  //   This is fixed by a specific arming pattern (likely a switch to read from or a specific sequence of
-  //   RC stick movements)
+    // UNCALIBRATED: 
+    // State when the quadcopter is just powered on and the ESC calibration isn't complete, IMU, other sensors
+    // are still being initialized
 
-  //   ARMED:
-  //   Drone has been armed and is ready to fly. At this stage, rotors start spinning at a slow speed and 
-  //   corresponding stick movements will initiate flight
+    // DISARMED:
+    // Once the calibration and other initialization is complete, the drone is able to fly but is disarmed. 
+    // This is fixed by a specific arming pattern (likely a switch to read from or a specific sequence of
+    // RC stick movements)
 
-  //   The drone can switch from ARMED to DISARMED via the flick of the arm switch, in case of a situation
-  //   where the pilot deems it to be unfit. Furthermore, it will be able to put itself in "DISARMED" state
-  //   by switching the ARM switch back.
+    // ARMED:
+    // Drone has been armed and is ready to fly. At this stage, rotors start spinning at a slow speed and 
+    // corresponding stick movements will initiate flight
+
+    // The drone can switch from ARMED to DISARMED via the flick of the arm switch, in case of a situation
+    // where the pilot deems it to be unfit. Furthermore, it will be able to put itself in "DISARMED" state
+    // by switching the ARM switch back.
     
 
-  //   */
+    // */
 
-  //   switch(current_state) {
-  //     case UNCALIBRATED:
-  //       printf("Calibrating\n");
-  //       HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
-  //       HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
-  //       HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
+    // switch(current_state) {
+    //   case UNCALIBRATED:
+    //     HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
+    //     HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
+    //     HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
 
-  //       // Initialize IMU
-  //       uint8_t check_dev_val = MPU6050_Init(&hi2c1, &imu);
+    //     // Initialize IMU
+    //     uint8_t check_dev_val = MPU6050_Init(&hi2c1, &imu);
+    //     printf("Check Dev: %d\n", check_dev_val);
+    //     HAL_Delay(1000);
+    //     MPU6050_Calibrate_IMU(&hi2c1, &imu);
 
-  //       HAL_Delay(1000);
-  //       MPU6050_Calibrate_IMU(&hi2c1, &imu);
+    //     current_state = DISARMED;
+    //     break;
+    //   case DISARMED:
+    //     printf("Disarmed\n");
+    //     HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
+    //     HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
+    //     HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
 
-  //       current_state = DISARMED;
-  //       break;
-  //     case DISARMED:
-  //       HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
-  //       HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
-  //       HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
-
-  //       // When the quadcopter is disarmed, it can only advance to an armed state if the appropriate switch is flicked
-  //       if (teleop_commands.arm_switch_status) {
+    //     // When the quadcopter is disarmed, it can only advance to an armed state if the appropriate switch is flicked
+    //     if (teleop_commands.arm_switch_status) {
           
-  //         current_state = ARMED;
-  //       } else {
-  //         // Continue in disarmed state 
-  //       }
-  //       break;
-  //     case ARMED:
-  //       HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_SET);
-  //       HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
-  //       HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
-  //       // state estimation and control loop goes ahead based on flag set in 400 Hz timer interrupt
-  //       if (control_loop_deadline) {
-  //         // Update the IMU readings, take most recent RC commands, and run control loop
-  //         MPU6050_Update_All(&hi2c1, &imu);
+    //       current_state = ARMED;
+    //     } else {
+    //       // Continue in disarmed state 
+    //     }
+    //     break;
+    //   case ARMED:
+    //     HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_SET);
+    //     HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
+    //     HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
+    //     // state estimation and control loop goes ahead based on flag set in 400 Hz timer interrupt
+    //     if (control_loop_deadline) {
+    //       // Update the IMU readings, take most recent RC commands, and run control loop
+    //       MPU6050_Update_All(&hi2c1, &imu);
 
-  //         // Update roll pitch and yaw rate setpoints with min/max being 45 deg/seconds
+    //       // Update roll pitch and yaw rate setpoints with min/max being 45 deg/seconds
 
-  //         float roll_setpoint = generate_setpoints(&teleop_commands, ROLL);
-  //         float pitch_setpoint = generate_setpoints(&teleop_commands, PITCH);
-  //         float yaw_setpoint = generate_setpoints(&teleop_commands, YAW);
+    //       float roll_setpoint = generate_setpoints(&teleop_commands, ROLL);
+    //       float pitch_setpoint = generate_setpoints(&teleop_commands, PITCH);
+    //       float yaw_setpoint = generate_setpoints(&teleop_commands, YAW);
 
-  //         update_controller(&roll_rate_control, roll_setpoint, imu.Gy);
-  //         update_controller(&pitch_rate_control, pitch_setpoint, imu.Gx);
-  //         // update_controller(&yaw_rate_controller, yaw_setpoint, imu.Gz);
+    //       update_controller(&roll_rate_control, roll_setpoint, imu.Gy);
+    //       update_controller(&pitch_rate_control, pitch_setpoint, imu.Gx);
+    //       // update_controller(&yaw_rate_controller, yaw_setpoint, imu.Gz);
 
-  //         // Run the PID controllers
-  //         float roll_new = compute_controller(&roll_rate_control);
-  //         float pitch_new = compute_controller(&pitch_rate_control);
-  //         // float yaw_new = compute_controller(&yaw_rate_control);
+    //       // Run the PID controllers
+    //       float roll_new = compute_controller(&roll_rate_control);
+    //       float pitch_new = compute_controller(&pitch_rate_control);
+    //       // float yaw_new = compute_controller(&yaw_rate_control);
           
-  //         // Based on positions of the motors, add or subtract controller outputs
-  //         // on the throttle value, and apply onto the RC outputs
+    //       // Based on positions of the motors, add or subtract controller outputs
+    //       // on the throttle value, and apply onto the RC outputs
 
-  //         // TEMPORARY: Currently only adding the throttle data onto the motors
+    //       // TEMPORARY: Currently only adding the throttle data onto the motors
 
-  //         pwm_update_percentage(&left_back_motor, teleop_commands.throttle);
-  //         pwm_update_percentage(&left_front_motor, teleop_commands.throttle);
-  //         pwm_update_percentage(&right_back_motor, teleop_commands.throttle);
-  //         pwm_update_percentage(&right_front_motor, teleop_commands.throttle);
+    //       pwm_update_percentage(&left_back_motor, teleop_commands.throttle);
+    //       pwm_update_percentage(&left_front_motor, teleop_commands.throttle);
+    //       pwm_update_percentage(&right_back_motor, teleop_commands.throttle);
+    //       pwm_update_percentage(&right_front_motor, teleop_commands.throttle);
 
-  //       }
-  //       // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
-  //       if (!teleop_commands.arm_switch_status) {
-  //         current_state = DISARMED;
-  //       }
-  //       break;
-  //   }
+    //     }
+    //     // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
+    //     if (!teleop_commands.arm_switch_status) {
+    //       current_state = DISARMED;
+    //     }
+    //     break;
+    // }
 
     
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  // }
+  }
 
   /* USER CODE END 3 */
 }
