@@ -68,7 +68,7 @@ osThreadId_t rc_inputHandle;
 const osThreadAttr_t rc_input_attributes = {
   .name = "rc_input",
   .stack_size = 128 * 3,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 /* Private function prototypes -----------------------------------------------*/

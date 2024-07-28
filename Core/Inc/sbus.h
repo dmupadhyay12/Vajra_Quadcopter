@@ -6,14 +6,16 @@
 
 #define HEADER_BYTE 0x0F
 #define ELEVEN_BYTES_MASK 0x07FF
-#define CHANNEL_0_LOW 44
+#define CHANNEL_0_LOW 44  // Rudder
 #define CHANNEL_0_HIGH 1811
-#define CHANNEL_1_LOW 172
+#define CHANNEL_1_LOW 172 // Throttle
 #define CHANNEL_1_HIGH 1795
-#define CHANNEL_2_LOW 172
+#define CHANNEL_2_LOW 1048 // Roll (Maybe remapped)
 #define CHANNEL_2_HIGH 1233
-#define CHANNEL_3_LOW 172
+#define CHANNEL_3_LOW 172 // Pitch
 #define CHANNEL_3_HIGH 1811
+#define CHANNEL_4_LOW 164 // Roll
+#define CHANNEL_4_HIGH 1811 
 #define CHANNEL_4_THRESHOLD 1800
 
 typedef enum {
@@ -24,7 +26,7 @@ typedef enum {
 } channel_axis_t;
 
 typedef struct channel_info {
-    uint16_t channels[18];
+    int16_t channels[18];
     float throttle;
     float roll;
     float pitch;

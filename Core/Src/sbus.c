@@ -6,12 +6,31 @@
 // Helper function for mapping one range onto -100 to +100
 float map(uint16_t low_val, uint16_t high_val, uint16_t val_to_map) {
     int range = (int) (high_val) - (int) (low_val);
-    float ratio = (int) (val_to_map) / range;
+    float ratio = (float) (val_to_map - low_val) / range;
     
     float mapped_val = -100.0 + ratio * 200.0;
     
     return mapped_val;
 }
+
+// Helper function for mapping one range onto 0 to +100
+float map_zero_to_hundred(uint16_t low_val, uint16_t high_val, uint16_t val_to_map) {
+    int range = (int) (high_val) - (int) (low_val);
+    float ratio = (float) (val_to_map - low_val) / range;
+    
+    float mapped_val = 0 + ratio * 100.0;
+
+    if (mapped_val < 0) {
+        mapped_val = 0;
+    } 
+
+    if (mapped_val > 100) {
+        mapped_val = 100;
+    }
+    
+    return mapped_val;
+}
+
 
 // Assuming max rate magnitude of 45 deg/s at the moment
 float generate_setpoints(channel_info_t* channel_info, channel_axis_t axis) {
@@ -19,17 +38,26 @@ float generate_setpoints(channel_info_t* channel_info, channel_axis_t axis) {
     float absolute_value = 0.0;
     float setpoint = 0;
     if (axis == ROLL) {
+        if (channel_info -> roll > -10 && channel_info -> roll < 10) {
+            return 0.0;
+        }
         absolute_value = range * channel_info -> roll / 100.0;
     } else if (axis == YAW) {
+        if (channel_info -> yaw > -10 && channel_info -> yaw < 10) {
+            return 0.0;
+        }
         absolute_value = range * channel_info -> yaw / 100.0;
     } else if (axis == PITCH) {
+        if (channel_info -> roll > -10 && channel_info -> roll < 10) {
+            return 0.0;
+        }
         absolute_value = range * channel_info -> pitch / 100.0;
     }
     return -45.0 + absolute_value;
 }
 
 void update_channels(channel_info_t* channel_info, uint8_t* buf) {
-    // iterates through the 25-byte buffer received as per SBUS protocol
+// iterates through the 25-byte buffer received as per SBUS protocol
     // updates the channels when a new packet is received
 
     if (buf != NULL && channel_info != NULL) {
@@ -67,13 +95,13 @@ void update_channels(channel_info_t* channel_info, uint8_t* buf) {
 
         // For channels 0 through 3, map inputs from -100 to +100
 
-        channel_info -> throttle = map(CHANNEL_0_LOW, CHANNEL_0_HIGH, channel_info -> channels[0]);
+        channel_info -> throttle = map(CHANNEL_1_LOW, CHANNEL_1_HIGH, channel_info -> channels[1]);
 
         // Remap throttle to 0-100% instead of -100% to 100%
-        channel_info -> throttle = ((channel_info -> throttle) + 100) / 2.0;
+        // channel_info -> pitch = ((channel_info -> pitch) + 100) / 2.0;
 
         channel_info -> roll = map(CHANNEL_1_LOW, CHANNEL_1_HIGH, channel_info -> channels[1]);
-        channel_info -> pitch = map(CHANNEL_2_LOW, CHANNEL_2_HIGH, channel_info -> channels[2]);
+        channel_info -> throttle = map_zero_to_hundred(CHANNEL_1_LOW, CHANNEL_1_HIGH, channel_info -> channels[1]);
         channel_info -> yaw = map(CHANNEL_3_LOW, CHANNEL_3_HIGH, channel_info -> channels[3]);
 
         if (channel_info -> channels[4] > CHANNEL_4_THRESHOLD) {

@@ -41,9 +41,13 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef* handle, MPU6050_t* data) {
         uint8_t dlpfSetting = 0x02;
         status = HAL_I2C_Mem_Write(handle, (uint16_t)MPU6050_I2C_ADDR, (uint16_t)MPU6050_CONFIG, 1, &dlpfSetting, 1, 10);
 
+        if (status != HAL_OK) {
+            return 0;
+        }
+
         // Delay 10ms and then run calibration process
         HAL_Delay(10);
-        // MPU6050_Calibrate_IMU(handle, data);
+        MPU6050_Calibrate_IMU(handle, data);
         return 1;
     }
     return 0;

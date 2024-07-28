@@ -13,6 +13,6 @@ typedef struct actuator_config {
 } actuator_config_t;
 
 void pwm_init(actuator_config_t *pwm);
-void pwm_update_percentage(actuator_config_t* pwm, uint8_t percent);
+uint16_t pwm_update_percentage(actuator_config_t* pwm, uint8_t percent);
 
 #endif

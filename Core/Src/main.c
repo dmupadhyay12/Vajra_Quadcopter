@@ -87,7 +87,7 @@ actuator_config_t right_back_motor = {
 
 typedef enum {UNCALIBRATED, DISARMED, ARMED} quadcopter_state_t;
 
-quadcopter_state_t current_state = UNCALIBRATED;
+quadcopter_state_t current_state = ARMED;
 
 
 // input channels configuration
@@ -116,7 +116,7 @@ MPU6050_t imu = {
   .Gx = 0,
   .Gy = 0,
   .Gz = 0,
-  .updatePeriod = 0,
+  .updatePeriod = 0.1,
   .temperature = 0,
   .accelRoll = 0,
   .accelPitch = 0,
@@ -157,24 +157,6 @@ pid_controller_t pitch_rate_control = {
   .control_loop_period = 0.0050,
 };
 
-// Declaration of threads
-/* Definitions for control_loop */
-// osThreadId_t control_loopHandle;
-// const osThreadAttr_t control_loop_attributes = {
-//   .name = "control_loop",
-//   .stack_size = 128 * 4,
-//   .priority = (osPriority_t) osPriorityNormal,
-// };
-
-// /* Definitions for logger */
-// osThreadId_t loggerHandle;
-// const osThreadAttr_t logger_attributes = {
-//   .name = "logger",
-//   .stack_size = 128 * 4,
-//   .priority = (osPriority_t) osPriorityBelowNormal5,
-// };
-
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -207,12 +189,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 // Defining intermediate buffer to be populated and parsed
 
 volatile uint8_t header_bytes[25] = {0};
+volatile bool channel_update_due = false;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart -> Instance == USART3) {
     if (header_bytes[0] == HEADER_BYTE) {
-      update_channels(&teleop_commands, header_bytes);
+      channel_update_due = true;
     }
   }
 }
@@ -223,20 +206,22 @@ void logger_task(void* argument) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for(;;)
   {
-    vTaskDelayUntil(&xLastWakeTime, 10000);
-    printf("Logger Task!\n");
+    vTaskDelayUntil(&xLastWakeTime, 100);
+    MPU6050_Update_All(&hi2c1, &imu);
+    // printf("Log\n");
+    // printf("Pitch: %f\n", imu.filteredPitch);
+    // printf("Roll: %f\n", imu.filteredRoll);
+    // printf("Roll Rate: %f\n", imu.gyroRoll);
   }
   /* USER CODE END start_control_loop */
 }
 
 void control_loop(void* argument) {
 
-  HAL_UART_Receive_IT(&huart3, header_bytes, 25);
-
   TickType_t xLastWakeTime = xTaskGetTickCount();
 
   for (;;) {
-    vTaskDelayUntil(&xLastWakeTime, 400);
+    vTaskDelayUntil(&xLastWakeTime, 20);
 
     /*
     This is the superloop during which the following occurs:
@@ -268,10 +253,16 @@ void control_loop(void* argument) {
 
     switch(current_state) {
       case UNCALIBRATED:
-        printf("Calibrating\n");
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_RESET);
+
+        // pwm_update_percentage(&left_back_motor, 0);
+        // HAL_Delay(100);
+        // pwm_update_percentage(&left_back_motor, 100);
+        // HAL_Delay(100);
+        // pwm_update_percentage(&left_back_motor, 0);
+
 
         // Initialize IMU
         uint8_t check_dev_val = MPU6050_Init(&hi2c1, &imu);
@@ -279,20 +270,18 @@ void control_loop(void* argument) {
         HAL_Delay(1000);
         MPU6050_Calibrate_IMU(&hi2c1, &imu);
 
-        current_state = DISARMED;
+
+
+        current_state = ARMED;
         break;
       case DISARMED:
-        printf("Disarmed\n");
         HAL_GPIO_WritePin(GPIOB, LD1_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
 
         // When the quadcopter is disarmed, it can only advance to an armed state if the appropriate switch is flicked
         if (teleop_commands.arm_switch_status) {
-          printf("Switch set motherfuckerrrr\n");
           current_state = ARMED;
-        } else {
-          // Continue in disarmed state 
         }
         break;
       case ARMED:
@@ -305,10 +294,23 @@ void control_loop(void* argument) {
           MPU6050_Update_All(&hi2c1, &imu);
 
           // Update roll pitch and yaw rate setpoints with min/max being 45 deg/seconds
+          // printf("Raw percentage: %f\n", teleop_commands.throttle);
+          float throttle_value_int = teleop_commands.throttle;
+
+          uint8_t throttle_value_uint = ((uint8_t)(throttle_value_int) + 100);
+          // uint8_t value_filtered = throttle_value_uint / 2;
+          // printf("Pitch Value Filtered: %d\n", value_filtered);
+          printf("Throttle value percent: %f\n", throttle_value_int);
+          // printf("Channel 0: %d\n", teleop_commands.channels[0]);
+          // printf("Channel 1: %d\n", teleop_commands.channels[1]);
+          // printf("Channel 2: %d\n", teleop_commands.channels[2]);
+          // printf("Channel 4: %d\n", teleop_commands.channels[4]);
 
           float roll_setpoint = generate_setpoints(&teleop_commands, ROLL);
           float pitch_setpoint = generate_setpoints(&teleop_commands, PITCH);
           float yaw_setpoint = generate_setpoints(&teleop_commands, YAW);
+
+          // printf("Roll Value: %d\n", teleop_commands.pitch);
 
           update_controller(&roll_rate_control, roll_setpoint, imu.Gy);
           update_controller(&pitch_rate_control, pitch_setpoint, imu.Gx);
@@ -324,16 +326,15 @@ void control_loop(void* argument) {
 
           // TEMPORARY: Currently only adding the throttle data onto the motors
 
-          pwm_update_percentage(&left_back_motor, teleop_commands.throttle);
-          pwm_update_percentage(&left_front_motor, teleop_commands.throttle);
-          pwm_update_percentage(&right_back_motor, teleop_commands.throttle);
-          pwm_update_percentage(&right_front_motor, teleop_commands.throttle);
-
+          pwm_update_percentage(&left_back_motor, throttle_value_int);
+          pwm_update_percentage(&left_front_motor, throttle_value_int);
+          pwm_update_percentage(&right_back_motor, throttle_value_int);
+          pwm_update_percentage(&right_front_motor, throttle_value_int);
         }
         // TODO: Check if disarm switch/channel is flicked, and if so, switch back into DISARMED state
-        if (!teleop_commands.arm_switch_status) {
-          current_state = DISARMED;
-        }
+        // if (!teleop_commands.arm_switch_status) {
+        //   current_state = DISARMED;
+        // }
         break;
     }
     HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
@@ -341,8 +342,13 @@ void control_loop(void* argument) {
 }
 
 void rc_input_task(void* argument) {
+
   for (;;) {
     HAL_UART_Receive_IT(&huart3, header_bytes, 25);
+    if (channel_update_due) {
+      update_channels(&teleop_commands, header_bytes);
+      channel_update_due = false;
+    }
   }
 }
 
@@ -423,14 +429,18 @@ int main(void)
 
 
   /* USER CODE END 2 */
-
+  // uint8_t check_dev_val = MPU6050_Init(&hi2c1, &imu);
+  printf("Calibration complete motherfucker\n");
 
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in freertos.c) */
   MX_FREERTOS_Init();
+  printf("Freertos Initialized\n");
 
   /* Start scheduler */
   osKernelStart();
+
+  printf("Kernel started\n");
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -441,10 +451,18 @@ int main(void)
   /* USER CODE END PFP */
   // Kick off receiving new packets
 
-  
+  // pwm_update_percentage(&left_back_motor, 100);
+  // HAL_Delay(2000);
+  // pwm_update_percentage(&left_back_motor, 0);
+  // HAL_Delay(2000);
+  // pwm_update_percentage(&left_back_motor, 100);
+
+  // HAL_Delay(100);
+  // pwm_update_percentage(&left_back_motor, 0);
+
   while (1)
   {
-
+    // pwm_update_percentage(&left_back_motor, 60);
     // HAL_UART_Receive_IT(&huart3, header_bytes, 25);
     // /*
     // This is the superloop during which the following occurs:
